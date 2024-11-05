@@ -1,7 +1,45 @@
+//import { number, object, string, InferOutput, parse } from "valibot";
 import { SearchType } from "../types";
+import { useMemo, useState } from "react";
 import { z } from "zod";
 
+// //Zod
+const WeatherSchema = z.object({
+  name: z.string(),
+  main: z.object({
+    temp: z.number(),
+    temp_max: z.number(),
+    temp_min: z.number(),
+  }),
+});
+
+export type Weather = z.infer<typeof WeatherSchema>;
+
+//con valibot
+// const WeatherSchema = object({
+//   name: string(),
+//   main: object({
+//     temp: number(),
+//     temp_max: number(),
+//     temp_min: number(),
+//   }),
+// });
+
+// type Weather = InferOutput<typeof WeatherSchema>;
+const initialState = {
+  name: "",
+  main: {
+    temp: 0,
+    temp_max: 0,
+    temp_min: 0,
+  },
+};
+
 export default function useWeather() {
+  const [weather, setWeather] = useState<Weather>(initialState);
+  const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+
   //TYPE GUARD AND ASSERTION
   //   function isWeatherResponse(weather: unknown) {
   //     return (
@@ -14,20 +52,12 @@ export default function useWeather() {
   //     );
   //   }
 
-  const WeatherSchema = z.object({
-    name: z.string(),
-    main: z.object({
-      temp: z.number(),
-      temp_max: z.number(),
-      temp_min: z.number(),
-    }),
-  });
-
-  //   type Weather = z.infer<typeof WeatherSchema>;
-
   async function fetchWeather({ city, country }: SearchType) {
     try {
-      let url = `http://api.openweathermap.org/geo/1.0/direct?q=${city},${country}&appid=${
+      setLoading(true);
+      setWeather(initialState);
+
+      let url = `https://api.openweathermap.org/geo/1.0/direct?q=${city},${country}&appid=${
         import.meta.env.VITE_API_KEY
       }`;
       let response = await fetch(url);
@@ -63,27 +93,46 @@ export default function useWeather() {
       }
 
       const data = await response.json(); // Parse the JSON data
+      //zod
       const weatherResult = WeatherSchema.safeParse(data);
+
+      //valibot
+      // const weatherResult = parse(WeatherSchema, data);
+      // console.log(weatherResult);
+
+      // type guard
       //   if (!isWeatherResponse(weatherResult)) {
       //     throw new Error("Datos de tiempo no son válidos");
       //   }
 
-      //   if (weatherResult === undefined) {
-      //     throw new Error("Sin resultados");
-      //   }
+      if (weatherResult === undefined) {
+        throw new Error("Sin resultados");
+      }
 
       if (!weatherResult.success) {
         throw new Error("El segundo resultado no fue exitoso");
       }
       console.log(weatherResult.data);
+      setNotFound(false);
+      setWeather(weatherResult.data);
     } catch (error) {
       console.log(error);
+      setNotFound(true);
     } finally {
       console.log("Fin de la consulta");
+      setLoading(false);
     }
   }
 
+  const hasWeatherData = useMemo(() => weather.name, [weather]);
+  console.log({
+    hasWeatherData,
+  });
   return {
     fetchWeather,
+    weather,
+    hasWeatherData,
+    loading,
+    notFound,
   };
 }

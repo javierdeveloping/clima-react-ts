@@ -3,6 +3,7 @@ export type SearchType = {
   country: string;
 };
 
+//castear, pero si llamo y no existe dara undefined
 // export type Weather = {
 //   name: string;
 //   main: {
